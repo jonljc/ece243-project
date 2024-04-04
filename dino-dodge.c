@@ -181,14 +181,10 @@ int main(void) {
         /* Erase */
         Game_Obstacles[i].erase = true;
         draw_obstacle(Game_Obstacles[i]);
-        // trex.erase = true;
-        // draw_dino(trex);
 
         /* Update Previous */
         Game_Obstacles[i].x_loc_prev = Game_Obstacles[i].x_loc_cur;
         Game_Obstacles[i].y_loc_prev = Game_Obstacles[i].y_loc_cur;
-        // trex.x_loc_prev = trex.x_loc_cur;
-        // trex.y_loc_prev = trex.y_loc_cur;
 
         /* Update Current */
         if (Game_Obstacles[i].collision == true) {
@@ -204,13 +200,10 @@ int main(void) {
           }
         }
 
-        // else if (trex.airborne == false)
-
         /* Draw */
         Game_Obstacles[i].erase = false;
         draw_obstacle(Game_Obstacles[i]);
-        // trex.erase = false;
-        // draw_dino(trex);
+        
       }
 
       if (trex.airborne == false) {
@@ -220,39 +213,42 @@ int main(void) {
         }
       }
 
+      /* Erase */
       trex.erase = true;
       draw_dino(trex);
 
+      /* Update Previous */
       trex.x_loc_prev = trex.x_loc_cur;
       trex.y_loc_prev = trex.y_loc_cur;
 
-      
-
+      /* Update Current */
+      // (Update only if trex is airborne / in flight)
       if (trex.airborne == true) {
+        // Update y_loc_cur
         if (trex.rising == true) {
           trex.y_loc_cur -= obstacle_speed;
         } else if (trex.rising == false) {
           trex.y_loc_cur += obstacle_speed;
         }
+
+        // Set rising to false after reaching max height
+        if (trex.y_loc_cur <= JUMP_MIN) {
+          trex.rising = false;
+        }
+        // Set airborne to false after landing on ground
+        // Set rising to true to initialize the next jump
+        else if (trex.y_loc_cur + trex.height >= Y_WORLD) {
+          trex.airborne = false;
+          trex.rising = true;
+        }
       }
 
-      if ((trex.airborne) == true && (trex.y_loc_cur <= JUMP_MIN)) {
-        trex.rising = false;
-      }
-      if ((trex.airborne) == true &&
-          (trex.y_loc_cur + trex.height >= Y_WORLD)) {
-        trex.airborne = false;
-        trex.rising = true;
-        // pressed_key = -1;
-      }
-
+      /* Draw */
       trex.erase = false;
       draw_dino(trex);
 
       /* Static Components */
-      // draw_dino(trex);
       draw_ground(GRASS_GREEN);
-
       wait_for_vsync();  // swap front and back buffers on VGA vertical sync
       pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // new back buffer
 
@@ -472,11 +468,13 @@ void read_ps2_keyboard(unsigned char* pressed_key) {
 
   PS2_data = *(PS2_ptr);          // read the Data register in the PS/2 port
   R_VALID = (PS2_data & 0x8000);  // mask bit-15 to check if read data valid
+  
+  // Only save PS2_data to *pressed_key if read data valid
   if (R_VALID != 0) {
     *(pressed_key) = (PS2_data & 0xFF); // if valid, mask the 8-bit make code
   }
 
-  // Only save PS2_data to *pressed_key if read data valid
+  // Empty the rest of the FIFO queue
   while (R_VALID != 0) {
     PS2_data = *(PS2_ptr);
     R_VALID = (PS2_data & 0x8000);
