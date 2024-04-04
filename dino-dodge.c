@@ -77,7 +77,7 @@ short int Buffer1[240][512]; // 240 rows, 512 (320 + padding) columns
 short int Buffer2[240][512];
 short int colour =  0xFFFF;
 short int BACKGROUND_COL = SKY_BLUE;
-int game_state; // 1 = home, 2 = main, 3 = game over
+int game_state = 2; // 1 = home, 2 = main, 3 = game over
 
 int main(void)
 {
@@ -94,7 +94,7 @@ int main(void)
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clear_screen(); // pixel_buffer_start points to the pixel buffer
 	
-	if(game_state = 1){
+	if(game_state == 2){
 	struct Obstacle cactus0 = {false, false, false, true, 50, 20, 0, 0, X_MAX, Y_WORLD - 50, BLACK};
 	struct Obstacle cactus1 = {false, false, false, true, 50, 20, 0, 0, X_MAX, Y_WORLD - 50, ORANGE};
 	struct Obstacle cactus2 = {false, false, false, true, 50, 20, 0, 0, X_MAX, Y_WORLD - 50, GRASS_GREEN};
@@ -194,10 +194,10 @@ int main(void)
 			break;
 		}
 		
-		}
 	}
 	timer = 0;
 	display_timer_HEX(timer);
+	}
 }
 
 void draw_obstacle(struct Obstacle obs){
