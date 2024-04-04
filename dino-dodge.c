@@ -91,6 +91,7 @@ void read_ps2_keyboard(unsigned char* pressed_key);
 
 // Game Functionality Prototypes
 void update_timer(int* timer);
+void update_airborne_dino_params(struct Dino* trex);
 void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
 void check_pterodactyl_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
 
@@ -152,26 +153,19 @@ int main(void) {
       update_timer(&timer);
       use_LEDs(num_lives);
 
+      // ========== DRAW DINO ==========
       for (int i = 0; i < num_obstacles; i++) {
         /* Collision Detection */
         // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod obstacle_speed - 1)
         // or else collision will be 1 pixel into the trex
         
+        // Check for collisions (cactus, pterodactyl)
         if (Game_Obstacles[i].cactus_obs_type) {
           check_cactus_collision(&(Game_Obstacles[i]), &trex, &num_lives);
         } else {
-          check_pterodactyl_collision(&(Game_Obstacles[i]), &trex, &num_lives);}
-        
-        /*
-        if (Game_Obstacles[i].x_loc_cur <= trex.x_loc_cur + trex.width) {
-          // If Game_Obstacles[i]
-          if (Game_Obstacles[i].collision == false) {
-            num_lives--;
-          }
-          Game_Obstacles[i].collision = true;
-          use_LEDs(num_lives);
-        }*/
-
+          check_pterodactyl_collision(&(Game_Obstacles[i]), &trex, &num_lives);
+        }
+                
         // New Obstacle Entering Screen
         if (i == 0) {  // In case we are handling first cactus
           Game_Obstacles[i].go = true;
@@ -212,6 +206,7 @@ int main(void) {
         
       }
 
+      // ========== DRAW DINO ==========
       if (trex.airborne == false) {
         read_ps2_keyboard(&pressed_key);
         if (pressed_key == KEY_SPACE) {
@@ -230,23 +225,7 @@ int main(void) {
       /* Update Current */
       // (Update only if trex is airborne / in flight)
       if (trex.airborne == true) {
-        // Update y_loc_cur
-        if (trex.rising == true) {
-          trex.y_loc_cur -= obstacle_speed;
-        } else if (trex.rising == false) {
-          trex.y_loc_cur += obstacle_speed;
-        }
-
-        // Set rising to false after reaching max height
-        if (trex.y_loc_cur <= JUMP_MIN) {
-          trex.rising = false;
-        }
-        // Set airborne to false after landing on ground
-        // Set rising to true to initialize the next jump
-        else if (trex.y_loc_cur + trex.height >= Y_WORLD) {
-          trex.airborne = false;
-          trex.rising = true;
-        }
+        update_airborne_dino_params(&trex);
       }
 
       /* Draw */
@@ -448,26 +427,30 @@ void display_timer_HEX(int timer) {
   *hex_p = hex_data;
 }
 
+
 void use_LEDs(int num_lives) {
-  //volatile int* led_p = (int*)LED_ADDR;
+  volatile int* led_p = (int*)LED_ADDR;
   if (num_lives == 1) {
-    volatile int* led_p = (int*)LED_ADDR;
     *led_p = 0x0001;
   } else if (num_lives == 2) {
-    volatile int* led_p = (int*)LED_ADDR;
     *led_p = 0x0003;
   } else if (num_lives == 3) {
-    volatile int* led_p = (int*)LED_ADDR;
     *led_p = 0x0007;
   } else {
-    volatile int* led_p = (int*)LED_ADDR;
     *led_p = 0x0000;
   }
 }
 
+
 // Extracts PS/2 pressed key using pointer to Address Map / port address
 // Checks for read data valid before assigning make code for the pressed key
 // to the int pointer variable given in input parameter
+// Our game will require 2 different keys to implement jump and slide
+// Make codes:
+// S = 0x1B
+// SPACE = 0x29
+// L-ALT = 0x11
+// ENTER = 0x5A
 void read_ps2_keyboard(unsigned char* pressed_key) {
   volatile int* PS2_ptr = (int*)0xFF200100;  // PS/2 port address
 
@@ -487,14 +470,9 @@ void read_ps2_keyboard(unsigned char* pressed_key) {
     R_VALID = (PS2_data & 0x8000);
   }
 
-  // Our game will require 2 different keys to implement jump and slide
-  // Make codes for different key Options:
-  // W = 0x1D
-  // S = 0x1B
-  // SPACE = 0x29
-  // L-ALT = 0x11
-  // ENTER = 0x5A
+ 
 }
+
 
 // Polls timer device to see if TO; if yes then increment timer and call
 // display_timer_HEX to update HEX display
@@ -507,6 +485,33 @@ void update_timer(int* timer) {
     display_timer_HEX(*timer);
   }
 }
+
+
+// Updates dino airborne parameters: y_loc_cur, airborne, rising
+// Rising flag set to false upon reaching vertical jump max
+// Airborne flag set to false upon landing on ground;
+// rising flag reinitialized to true for next jump
+void update_airborne_dino_params(struct Dino* trex) {
+  // Update y_loc_cur
+  if (trex->rising == true) {
+    trex->y_loc_cur -= obstacle_speed;
+  } else if (trex->rising == false) {
+    trex->y_loc_cur += obstacle_speed;
+  }
+
+  // Set rising to false after reaching max height
+  if (trex->y_loc_cur <= JUMP_MIN) {
+    trex->rising = false;
+  }
+        
+  // Set airborne to false after landing on ground
+  // Set rising to true to initialize the next jump
+  else if (trex->y_loc_cur + trex->height >= Y_WORLD) {
+    trex->airborne = false;
+    trex->rising = true;
+  }
+}
+
 
 // Input Obstacle struct, Dino struct, num_lives int by pointer
 // Checks and sets collision flag for cactus Obstacle
@@ -523,6 +528,7 @@ void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* liv
     use_LEDs(*lives);
   }
 }
+
 
 // Input Obstacle struct, Dino struct, num_lives int by pointer
 // Checks and sets collision flag for cactus Obstacle
