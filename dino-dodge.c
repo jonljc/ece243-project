@@ -92,6 +92,8 @@ void read_ps2_keyboard(unsigned char* pressed_key);
 // Game Functionality Prototypes
 void update_timer(int* timer);
 void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
+void check_pterodactyl_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
+
 
 // END: Helper Function Prototypes
 
@@ -137,7 +139,7 @@ int main(void) {
     int num_obstacles = sizeof(Game_Obstacles) / sizeof(Game_Obstacles[0]);
 
     struct Dino trex = {false, true,          false, 0,  0,
-                        20,    Y_WORLD - 120, 120,   49, PINK};
+                        20,  Y_WORLD - 120, 120,   49, PINK};
 
     init_timer();
     int timer = 0;
@@ -155,7 +157,10 @@ int main(void) {
         // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod obstacle_speed - 1)
         // or else collision will be 1 pixel into the trex
         
-        check_cactus_collision(&(Game_Obstacles[i]), &trex, &num_lives);
+        if (Game_Obstacles[i].cactus_obs_type) {
+          check_cactus_collision(&(Game_Obstacles[i]), &trex, &num_lives);
+        } else {
+          check_pterodactyl_collision(&(Game_Obstacles[i]), &trex, &num_lives);}
         
         /*
         if (Game_Obstacles[i].x_loc_cur <= trex.x_loc_cur + trex.width) {
@@ -503,15 +508,34 @@ void update_timer(int* timer) {
   }
 }
 
-
+// Input Obstacle struct, Dino struct, num_lives int by pointer
+// Checks and sets collision flag for cactus Obstacle
 void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives) {
-  // Check for y-bound collision, if cactus is within x-bound range of trex
+  // Check if cactus x-bound corners are within trex range
+  // And check if cactus y-bound top collides with trex bottom
   if ((cactus->x_loc_cur + cactus->width >= trex->x_loc_cur && cactus->x_loc_cur <= trex->x_loc_cur + trex->width) && (cactus->y_loc_cur <= trex->y_loc_cur + trex->height)) {
+    // If not previously collided, then decrement num_lives
     if (cactus->collision == false) {
       (*lives)--;
     }
+    // Set collision flag to true
     cactus->collision = true;
     use_LEDs(*lives);
   }
 }
 
+// Input Obstacle struct, Dino struct, num_lives int by pointer
+// Checks and sets collision flag for cactus Obstacle
+void check_pterodactyl_collision(struct Obstacle* pterodactyl, struct Dino* trex, int* lives) {
+  // Check if pterodactyl x-bound corners are within trex range
+  // And check if pterodactyl y-bound bottom collides with trex top
+  if ((pterodactyl->x_loc_cur + pterodactyl->width >= trex->x_loc_cur && pterodactyl->x_loc_cur <= trex->x_loc_cur + trex->width) && (pterodactyl->y_loc_cur + pterodactyl->height >= trex->y_loc_cur)){
+    // If not previously collided, then decrement num_lives
+    if (pterodactyl->collision == false) {
+      (*lives)--;
+    }
+    // Set collision flag to true
+    pterodactyl->collision = true;
+    use_LEDs(*lives);
+  }
+}
