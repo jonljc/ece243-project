@@ -27,7 +27,7 @@
 #define BLUE 0x1F
 #define PINK 0xF81F
 
-#define SKY_BLUE 0x9edf
+#define SKY_BLUE 0x975f
 #define GRASS_GREEN 0x356a
 // END: Colour Definitions
 
@@ -91,6 +91,7 @@ void read_ps2_keyboard(unsigned char* pressed_key);
 
 // Game Functionality Prototypes
 void update_timer(int* timer);
+void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
 
 // END: Helper Function Prototypes
 
@@ -136,35 +137,35 @@ int main(void) {
     int num_obstacles = sizeof(Game_Obstacles) / sizeof(Game_Obstacles[0]);
 
     struct Dino trex = {false, true,          false, 0,  0,
-                        20,    Y_WORLD - 120, 120,   50, PINK};
+                        20,    Y_WORLD - 120, 120,   49, PINK};
 
     init_timer();
     int timer = 0;
-    int num_lives = 10000;
+    int num_lives = 3;
     int cacti_dist;
     int go_dist;
     int cacti_buffer = 40;
 
     while (1) {
-      /*read_ps2_keyboard(&pressed_key);
-      if (pressed_key == KEY_SPACE) {
-        trex.airborne = true;
-      }*/
-
       update_timer(&timer);
       use_LEDs(num_lives);
 
       for (int i = 0; i < num_obstacles; i++) {
         /* Collision Detection */
-        // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod num_lives - 1)
+        // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod obstacle_speed - 1)
         // or else collision will be 1 pixel into the trex
+        
+        check_cactus_collision(&(Game_Obstacles[i]), &trex, &num_lives);
+        
+        /*
         if (Game_Obstacles[i].x_loc_cur <= trex.x_loc_cur + trex.width) {
+          // If Game_Obstacles[i]
           if (Game_Obstacles[i].collision == false) {
             num_lives--;
           }
           Game_Obstacles[i].collision = true;
           use_LEDs(num_lives);
-        }
+        }*/
 
         // New Obstacle Entering Screen
         if (i == 0) {  // In case we are handling first cactus
@@ -443,6 +444,7 @@ void display_timer_HEX(int timer) {
 }
 
 void use_LEDs(int num_lives) {
+  //volatile int* led_p = (int*)LED_ADDR;
   if (num_lives == 1) {
     volatile int* led_p = (int*)LED_ADDR;
     *led_p = 0x0001;
@@ -500,3 +502,16 @@ void update_timer(int* timer) {
     display_timer_HEX(*timer);
   }
 }
+
+
+void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives) {
+  // Check for y-bound collision, if cactus is within x-bound range of trex
+  if ((cactus->x_loc_cur + cactus->width >= trex->x_loc_cur && cactus->x_loc_cur <= trex->x_loc_cur + trex->width) && (cactus->y_loc_cur <= trex->y_loc_cur + trex->height)) {
+    if (cactus->collision == false) {
+      (*lives)--;
+    }
+    cactus->collision = true;
+    use_LEDs(*lives);
+  }
+}
+
