@@ -6,6 +6,7 @@
 #define Y_MAX (240 - 1)
 #define GROUND_HEIGHT 5
 #define Y_WORLD (Y_MAX - GROUND_HEIGHT)
+#define JUMP_MIN (Y_WORLD - 200)
 
 #define TIMER_ADDR 0xFF202000
 #define TIMER_DELAY 100000000  // one second
@@ -52,6 +53,9 @@ struct Obstacle {
 };
 
 struct Dino {
+  bool airborne;
+  bool rising;  // If dino is rising, true.
+                // If dino is falling, false.
   bool erase;
   int x_loc_prev;
   int y_loc_prev;
@@ -83,7 +87,7 @@ void wait_for_vsync();
 void init_timer();
 void display_timer_HEX(int timer);
 void use_LEDs(int num_lives);
-void read_ps2_keyboard(int* pressed_key);
+void read_ps2_keyboard(unsigned char* pressed_key);
 
 // Game Functionality Prototypes
 void update_timer(int* timer);
@@ -99,6 +103,7 @@ short int Buffer2[240][512];
 short int colour = 0xFFFF;
 short int BACKGROUND_COL = SKY_BLUE;
 int game_state = 2;  // 1 = home, 2 = main, 3 = game over
+unsigned char pressed_key = 0;
 
 int main(void) {
   volatile int* pixel_ctrl_ptr = (int*)0xFF203020;
@@ -130,21 +135,29 @@ int main(void) {
                                         cactus2};
     int num_obstacles = sizeof(Game_Obstacles) / sizeof(Game_Obstacles[0]);
 
-    struct Dino trex = {false, 0, 0, 20, Y_WORLD - 120, 120, 50, PINK};
+    struct Dino trex = {false, true,          false, 0,  0,
+                        20,    Y_WORLD - 120, 120,   50, PINK};
 
     init_timer();
     int timer = 0;
-    int num_lives = 3;
+    int num_lives = 10000;
     int cacti_dist;
     int go_dist;
     int cacti_buffer = 40;
 
     while (1) {
+      /*read_ps2_keyboard(&pressed_key);
+      if (pressed_key == KEY_SPACE) {
+        trex.airborne = true;
+      }*/
+
       update_timer(&timer);
       use_LEDs(num_lives);
 
       for (int i = 0; i < num_obstacles; i++) {
         /* Collision Detection */
+        // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod num_lives - 1)
+        // or else collision will be 1 pixel into the trex
         if (Game_Obstacles[i].x_loc_cur <= trex.x_loc_cur + trex.width) {
           if (Game_Obstacles[i].collision == false) {
             num_lives--;
@@ -168,14 +181,14 @@ int main(void) {
         /* Erase */
         Game_Obstacles[i].erase = true;
         draw_obstacle(Game_Obstacles[i]);
-        trex.erase = true;
-        draw_dino(trex);
+        // trex.erase = true;
+        // draw_dino(trex);
 
         /* Update Previous */
         Game_Obstacles[i].x_loc_prev = Game_Obstacles[i].x_loc_cur;
         Game_Obstacles[i].y_loc_prev = Game_Obstacles[i].y_loc_cur;
-        trex.x_loc_prev = trex.x_loc_cur;
-        trex.y_loc_prev = trex.y_loc_cur;
+        // trex.x_loc_prev = trex.x_loc_cur;
+        // trex.y_loc_prev = trex.y_loc_cur;
 
         /* Update Current */
         if (Game_Obstacles[i].collision == true) {
@@ -191,15 +204,53 @@ int main(void) {
           }
         }
 
+        // else if (trex.airborne == false)
+
         /* Draw */
         Game_Obstacles[i].erase = false;
         draw_obstacle(Game_Obstacles[i]);
-        trex.erase = false;
-        draw_dino(trex);
+        // trex.erase = false;
+        // draw_dino(trex);
       }
 
-      /* Static Components */
+      if (trex.airborne == false) {
+        read_ps2_keyboard(&pressed_key);
+        if (pressed_key == KEY_SPACE) {
+          trex.airborne = true;
+        }
+      }
+
+      trex.erase = true;
       draw_dino(trex);
+
+      trex.x_loc_prev = trex.x_loc_cur;
+      trex.y_loc_prev = trex.y_loc_cur;
+
+      
+
+      if (trex.airborne == true) {
+        if (trex.rising == true) {
+          trex.y_loc_cur -= obstacle_speed;
+        } else if (trex.rising == false) {
+          trex.y_loc_cur += obstacle_speed;
+        }
+      }
+
+      if ((trex.airborne) == true && (trex.y_loc_cur <= JUMP_MIN)) {
+        trex.rising = false;
+      }
+      if ((trex.airborne) == true &&
+          (trex.y_loc_cur + trex.height >= Y_WORLD)) {
+        trex.airborne = false;
+        trex.rising = true;
+        // pressed_key = -1;
+      }
+
+      trex.erase = false;
+      draw_dino(trex);
+
+      /* Static Components */
+      // draw_dino(trex);
       draw_ground(GRASS_GREEN);
 
       wait_for_vsync();  // swap front and back buffers on VGA vertical sync
@@ -414,17 +465,21 @@ void use_LEDs(int num_lives) {
 // Extracts PS/2 pressed key using pointer to Address Map / port address
 // Checks for read data valid before assigning make code for the pressed key
 // to the int pointer variable given in input parameter
-void read_ps2_keyboard(int* pressed_key) {
+void read_ps2_keyboard(unsigned char* pressed_key) {
   volatile int* PS2_ptr = (int*)0xFF200100;  // PS/2 port address
 
   int PS2_data, R_VALID;
 
   PS2_data = *(PS2_ptr);          // read the Data register in the PS/2 port
   R_VALID = (PS2_data & 0x8000);  // mask bit-15 to check if read data valid
+  if (R_VALID != 0) {
+    *(pressed_key) = (PS2_data & 0xFF); // if valid, mask the 8-bit make code
+  }
 
   // Only save PS2_data to *pressed_key if read data valid
-  if (!R_VALID) {
-    *(pressed_key) = PS2_data & 0xFF;
+  while (R_VALID != 0) {
+    PS2_data = *(PS2_ptr);
+    R_VALID = (PS2_data & 0x8000);
   }
 
   // Our game will require 2 different keys to implement jump and slide
