@@ -86,7 +86,7 @@ void use_LEDs(int num_lives);
 void read_ps2_keyboard(int* pressed_key);
 
 // Game Functionality Prototypes
-void update_timer(int timer);
+void update_timer(int* timer);
 
 // END: Helper Function Prototypes
 
@@ -140,7 +140,7 @@ int main(void) {
     int cacti_buffer = 40;
 
     while (1) {
-      update_timer(timer);
+      update_timer(&timer);
       use_LEDs(num_lives);
 
       for (int i = 0; i < num_obstacles; i++) {
@@ -438,12 +438,12 @@ void read_ps2_keyboard(int* pressed_key) {
 
 // Polls timer device to see if TO; if yes then increment timer and call
 // display_timer_HEX to update HEX display
-void update_timer(int timer) {
+void update_timer(int* timer) {
   if ((*timer_p & 1) == 1) {  // if timer expired (TO = 1)
     *timer_p = 0;             // TO = 0
 
-    timer++;
+    (*timer)++;
 
-    display_timer_HEX(timer);
+    display_timer_HEX(*timer);
   }
 }
