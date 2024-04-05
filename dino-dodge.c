@@ -6,7 +6,8 @@
 #define Y_MAX (240 - 1)
 #define GROUND_HEIGHT 5
 #define Y_WORLD (Y_MAX - GROUND_HEIGHT)
-#define JUMP_MIN (Y_WORLD - 200)
+#define JUMP_MIN (Y_WORLD - 180)
+#define JUMP_THR ((JUMP_MIN + Y_WORLD) / 2 - 70)
 
 #define TIMER_ADDR 0xFF202000
 #define TIMER_DELAY 100000000  // one second
@@ -92,9 +93,12 @@ void read_ps2_keyboard(unsigned char* pressed_key);
 // Game Functionality Prototypes
 void update_timer(int* timer);
 void update_airborne_dino_params(struct Dino* trex);
-void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
-void check_pterodactyl_collision(struct Obstacle* cactus, struct Dino* trex, int* lives);
-
+void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex,
+                            int* lives);
+void check_pterodactyl_collision(struct Obstacle* pterodactyl,
+                                 struct Dino* trex, int* lives);
+void create_cactus(struct Obstacle* cactus);
+void create_pterodactyl(struct Obstacle* pterodactyl);
 
 // END: Helper Function Prototypes
 
@@ -125,7 +129,20 @@ int main(void) {
   clear_screen();  // pixel_buffer_start points to the pixel buffer
 
   if (game_state == 2) {
-    struct Obstacle cactus0 = {false, false, false, true,         50,   20,
+    const int MAX_OBS = 6;
+    struct Obstacle Game_Obstacles[MAX_OBS];
+
+    for (int obsIdx = 0; obsIdx < MAX_OBS; obsIdx++) {
+      int randNum = rand() % 3;
+
+      if (randNum == 0 || randNum == 1) {
+        create_cactus(&(Game_Obstacles[obsIdx]));
+      } else {
+        create_pterodactyl(&(Game_Obstacles[obsIdx]));
+      }
+    }
+
+    /*struct Obstacle cactus0 = {false, false, false, true,         50,   20,
                                0,     0,     X_MAX, Y_WORLD - 50, BLACK};
     struct Obstacle cactus1 = {false, false, false, true,         50,    20,
                                0,     0,     X_MAX, Y_WORLD - 50, ORANGE};
@@ -137,43 +154,49 @@ int main(void) {
 
     struct Obstacle Game_Obstacles[] = {cactus0, pterodactyl0, cactus1,
                                         cactus2};
-    int num_obstacles = sizeof(Game_Obstacles) / sizeof(Game_Obstacles[0]);
+    int num_obstacles = sizeof(Game_Obstacles) / sizeof(Game_Obstacles[0]);*/
 
-    struct Dino trex = {false, true,          false, 0,  0,
-                        20,  Y_WORLD - 120, 120,   49, PINK};
+    struct Dino trex = {false, true,         false, 0,  0,
+                        20,    Y_WORLD - 80, 80,    25, PINK};
 
     init_timer();
     int timer = 0;
-    int num_lives = 3;
-    int cacti_dist;
+    int num_lives = 3;  // 10000;
+    int obs_dist;
     int go_dist;
-    int cacti_buffer = 40;
+    int obs_buffer = 120;
+    int rotIdx = -1;
 
     while (1) {
       update_timer(&timer);
       use_LEDs(num_lives);
 
-      // ========== DRAW DINO ==========
-      for (int i = 0; i < num_obstacles; i++) {
+      // ========== DRAW OBSTACLES ==========
+      rotIdx++;
+      if (rotIdx >= MAX_OBS) {
+        rotIdx = 0;
+      }
+
+      for (int i = 0; i < /*num_obstacles*/ MAX_OBS; i++) {
         /* Collision Detection */
-        // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod obstacle_speed - 1)
-        // or else collision will be 1 pixel into the trex
-        
+        // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod
+        // obstacle_speed - 1) or else collision will be 1 pixel into the trex
+
         // Check for collisions (cactus, pterodactyl)
         if (Game_Obstacles[i].cactus_obs_type) {
           check_cactus_collision(&(Game_Obstacles[i]), &trex, &num_lives);
         } else {
           check_pterodactyl_collision(&(Game_Obstacles[i]), &trex, &num_lives);
         }
-                
+
         // New Obstacle Entering Screen
         if (i == 0) {  // In case we are handling first cactus
           Game_Obstacles[i].go = true;
         } else {
-          cacti_dist =
-              Game_Obstacles[i].x_loc_cur - Game_Obstacles[i - 1].x_loc_cur;
-          go_dist = Game_Obstacles[i - 1].height + cacti_buffer;
-          if (cacti_dist >= go_dist) {
+          obs_dist = Game_Obstacles[i].x_loc_cur -
+                     Game_Obstacles[i - 1].x_loc_cur - Game_Obstacles[i].width;
+          go_dist = Game_Obstacles[i - 1].height + obs_buffer;
+          if (obs_dist >= go_dist) {
             Game_Obstacles[i].go = true;
           }
         }
@@ -189,9 +212,9 @@ int main(void) {
         /* Update Current */
         if (Game_Obstacles[i].collision == true) {
           if (Game_Obstacles[i].cactus_obs_type == true) {
-            Game_Obstacles[i].y_loc_cur += obstacle_speed;
+            Game_Obstacles[i].y_loc_cur += 3 * obstacle_speed;
           } else if (Game_Obstacles[i].cactus_obs_type == false) {
-            Game_Obstacles[i].y_loc_cur -= obstacle_speed;
+            Game_Obstacles[i].y_loc_cur -= 3 * obstacle_speed;
           }
 
         } else if (Game_Obstacles[i].collision == false) {
@@ -203,7 +226,6 @@ int main(void) {
         /* Draw */
         Game_Obstacles[i].erase = false;
         draw_obstacle(Game_Obstacles[i]);
-        
       }
 
       // ========== DRAW DINO ==========
@@ -427,7 +449,6 @@ void display_timer_HEX(int timer) {
   *hex_p = hex_data;
 }
 
-
 void use_LEDs(int num_lives) {
   volatile int* led_p = (int*)LED_ADDR;
   if (num_lives == 1) {
@@ -440,7 +461,6 @@ void use_LEDs(int num_lives) {
     *led_p = 0x0000;
   }
 }
-
 
 // Extracts PS/2 pressed key using pointer to Address Map / port address
 // Checks for read data valid before assigning make code for the pressed key
@@ -458,10 +478,10 @@ void read_ps2_keyboard(unsigned char* pressed_key) {
 
   PS2_data = *(PS2_ptr);          // read the Data register in the PS/2 port
   R_VALID = (PS2_data & 0x8000);  // mask bit-15 to check if read data valid
-  
+
   // Only save PS2_data to *pressed_key if read data valid
   if (R_VALID != 0) {
-    *(pressed_key) = (PS2_data & 0xFF); // if valid, mask the 8-bit make code
+    *(pressed_key) = (PS2_data & 0xFF);  // if valid, mask the 8-bit make code
   }
 
   // Empty the rest of the FIFO queue
@@ -469,10 +489,7 @@ void read_ps2_keyboard(unsigned char* pressed_key) {
     PS2_data = *(PS2_ptr);
     R_VALID = (PS2_data & 0x8000);
   }
-
- 
 }
-
 
 // Polls timer device to see if TO; if yes then increment timer and call
 // display_timer_HEX to update HEX display
@@ -486,7 +503,6 @@ void update_timer(int* timer) {
   }
 }
 
-
 // Updates dino airborne parameters: y_loc_cur, airborne, rising
 // Rising flag set to false upon reaching vertical jump max
 // Airborne flag set to false upon landing on ground;
@@ -494,16 +510,25 @@ void update_timer(int* timer) {
 void update_airborne_dino_params(struct Dino* trex) {
   // Update y_loc_cur
   if (trex->rising == true) {
-    trex->y_loc_cur -= obstacle_speed;
+    if (trex->y_loc_cur < JUMP_THR) {
+      trex->y_loc_cur -= obstacle_speed;
+    } else {
+      trex->y_loc_cur -= 2 * obstacle_speed;
+    }
+
   } else if (trex->rising == false) {
-    trex->y_loc_cur += obstacle_speed;
+    if (trex->y_loc_cur < JUMP_THR) {
+      trex->y_loc_cur += obstacle_speed;
+    } else {
+      trex->y_loc_cur += obstacle_speed;
+    }
   }
 
   // Set rising to false after reaching max height
   if (trex->y_loc_cur <= JUMP_MIN) {
     trex->rising = false;
   }
-        
+
   // Set airborne to false after landing on ground
   // Set rising to true to initialize the next jump
   else if (trex->y_loc_cur + trex->height >= Y_WORLD) {
@@ -512,13 +537,15 @@ void update_airborne_dino_params(struct Dino* trex) {
   }
 }
 
-
 // Input Obstacle struct, Dino struct, num_lives int by pointer
 // Checks and sets collision flag for cactus Obstacle
-void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* lives) {
+void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex,
+                            int* lives) {
   // Check if cactus x-bound corners are within trex range
   // And check if cactus y-bound top collides with trex bottom
-  if ((cactus->x_loc_cur + cactus->width >= trex->x_loc_cur && cactus->x_loc_cur <= trex->x_loc_cur + trex->width) && (cactus->y_loc_cur <= trex->y_loc_cur + trex->height)) {
+  if ((cactus->x_loc_cur + cactus->width >= trex->x_loc_cur &&
+       cactus->x_loc_cur <= trex->x_loc_cur + trex->width) &&
+      (cactus->y_loc_cur <= trex->y_loc_cur + trex->height)) {
     // If not previously collided, then decrement num_lives
     if (cactus->collision == false) {
       (*lives)--;
@@ -529,13 +556,15 @@ void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex, int* liv
   }
 }
 
-
 // Input Obstacle struct, Dino struct, num_lives int by pointer
 // Checks and sets collision flag for cactus Obstacle
-void check_pterodactyl_collision(struct Obstacle* pterodactyl, struct Dino* trex, int* lives) {
+void check_pterodactyl_collision(struct Obstacle* pterodactyl,
+                                 struct Dino* trex, int* lives) {
   // Check if pterodactyl x-bound corners are within trex range
   // And check if pterodactyl y-bound bottom collides with trex top
-  if ((pterodactyl->x_loc_cur + pterodactyl->width >= trex->x_loc_cur && pterodactyl->x_loc_cur <= trex->x_loc_cur + trex->width) && (pterodactyl->y_loc_cur + pterodactyl->height >= trex->y_loc_cur)){
+  if ((pterodactyl->x_loc_cur + pterodactyl->width >= trex->x_loc_cur &&
+       pterodactyl->x_loc_cur <= trex->x_loc_cur + trex->width) &&
+      (pterodactyl->y_loc_cur + pterodactyl->height >= trex->y_loc_cur)) {
     // If not previously collided, then decrement num_lives
     if (pterodactyl->collision == false) {
       (*lives)--;
@@ -544,4 +573,20 @@ void check_pterodactyl_collision(struct Obstacle* pterodactyl, struct Dino* trex
     pterodactyl->collision = true;
     use_LEDs(*lives);
   }
+}
+
+// Input cactus obstacle object by pointer
+// Create instance of cactus obstacle
+void create_cactus(struct Obstacle* cactus) {
+  struct Obstacle temp = {false, false, false, true,         50,   20,
+                          0,     0,     X_MAX, Y_WORLD - 50, BLACK};
+  *cactus = temp;
+}
+
+// Input pterodactyl obstacle object by pointer
+// Create instance of pterodactyl obstacle
+void create_pterodactyl(struct Obstacle* pterodactyl) {
+  struct Obstacle temp = {false, false, false, false, 30,   30,
+                          0,     0,     X_MAX, 90,    BLACK};
+  *pterodactyl = temp;
 }
