@@ -99,6 +99,7 @@ void check_pterodactyl_collision(struct Obstacle* pterodactyl,
                                  struct Dino* trex, int* lives);
 void create_cactus(struct Obstacle* cactus);
 void create_pterodactyl(struct Obstacle* pterodactyl);
+void recycle_obstacle(struct Obstacle* obs);
 
 // END: Helper Function Prototypes
 
@@ -133,6 +134,9 @@ int main(void) {
     struct Obstacle Game_Obstacles[MAX_OBS];
 
     for (int obsIdx = 0; obsIdx < MAX_OBS; obsIdx++) {
+      recycle_obstacle(&(Game_Obstacles[obsIdx]));
+
+      /*
       int randNum = rand() % 3;
 
       if (randNum == 0 || randNum == 1) {
@@ -140,22 +144,13 @@ int main(void) {
       } else {
         create_pterodactyl(&(Game_Obstacles[obsIdx]));
       }
+      */
     }
 
-    /*struct Obstacle cactus0 = {false, false, false, true,         50,   20,
-                               0,     0,     X_MAX, Y_WORLD - 50, BLACK};
-    struct Obstacle cactus1 = {false, false, false, true,         50,    20,
-                               0,     0,     X_MAX, Y_WORLD - 50, ORANGE};
-    struct Obstacle cactus2 = {false, false,        false,      true,
-                               50,    20,           0,          0,
-                               X_MAX, Y_WORLD - 50, GRASS_GREEN};
-    struct Obstacle pterodactyl0 = {false, false, false, false, 30,   30,
-                                    0,     0,     X_MAX, 90,    BLACK};
+    // Activate the first obstacle of the game by default
+    Game_Obstacles[0].go = true;
 
-    struct Obstacle Game_Obstacles[] = {cactus0, pterodactyl0, cactus1,
-                                        cactus2};
-    int num_obstacles = sizeof(Game_Obstacles) / sizeof(Game_Obstacles[0]);*/
-
+    // Initialize Dino object
     struct Dino trex = {false, true,         false, 0,  0,
                         20,    Y_WORLD - 80, 80,    25, PINK};
 
@@ -166,6 +161,7 @@ int main(void) {
     int go_dist;
     int obs_buffer = 120;
     int rotIdx = -1;
+    int prevIdx = 0;
 
     while (1) {
       update_timer(&timer);
@@ -189,17 +185,25 @@ int main(void) {
           check_pterodactyl_collision(&(Game_Obstacles[i]), &trex, &num_lives);
         }
 
-        // New Obstacle Entering Screen
-        if (i == 0) {  // In case we are handling first cactus
-          Game_Obstacles[i].go = true;
-        } else {
-          obs_dist = Game_Obstacles[i].x_loc_cur -
-                     Game_Obstacles[i - 1].x_loc_cur - Game_Obstacles[i].width;
-          go_dist = Game_Obstacles[i - 1].height + obs_buffer;
-          if (obs_dist >= go_dist) {
-            Game_Obstacles[i].go = true;
-          }
+        prevIdx = rotIdx - 1;
+        if (prevIdx < 0) {
+          prevIdx = MAX_OBS - 1;
         }
+
+        // New Obstacle Entering Screen
+        /*if (firsttime) {
+        //if (i == 0) {  // In case we are handling first cactus
+          Game_Obstacles[rotIdx].go = true;
+          firsttime = false;
+        } else {*/
+        obs_dist = Game_Obstacles[rotIdx].x_loc_cur -
+                   Game_Obstacles[/*i - 1*/ prevIdx].x_loc_cur -
+                   Game_Obstacles[rotIdx].width;
+        go_dist = Game_Obstacles[/*i - 1*/ prevIdx].height + obs_buffer;
+        if (obs_dist >= go_dist) {
+          Game_Obstacles[rotIdx].go = true;
+        }
+        //}
 
         /* Erase */
         Game_Obstacles[i].erase = true;
@@ -211,15 +215,35 @@ int main(void) {
 
         /* Update Current */
         if (Game_Obstacles[i].collision == true) {
+          // If a cactus collides, then send it to the ground
           if (Game_Obstacles[i].cactus_obs_type == true) {
             Game_Obstacles[i].y_loc_cur += 3 * obstacle_speed;
-          } else if (Game_Obstacles[i].cactus_obs_type == false) {
+          }
+          // If a pterodactyl collides, then send it to the sky
+          else if (Game_Obstacles[i].cactus_obs_type == false) {
             Game_Obstacles[i].y_loc_cur -= 3 * obstacle_speed;
           }
 
+          // After obstacle collides, recycle after it exists bottom screen
+          if (Game_Obstacles[i].y_loc_cur /*+ Game_Obstacles[i].height*/ >=
+              Y_MAX + 1) {
+            recycle_obstacle(&(Game_Obstacles[i]));
+          }
+          // After obstacle collides, recycle after it exists bottom screen
+          else if (Game_Obstacles[i].y_loc_cur + Game_Obstacles[i].width <= 0) {
+            recycle_obstacle(&(Game_Obstacles[i]));
+          }
+
         } else if (Game_Obstacles[i].collision == false) {
+          // If an obstacle is not collided, then move it left
           if (Game_Obstacles[i].go == true) {
             Game_Obstacles[i].x_loc_cur -= obstacle_speed;
+          }
+
+          // After obstacle is safely avoided, recycle after it exists left
+          // screen
+          if (Game_Obstacles[i].x_loc_cur + Game_Obstacles[i].height <= 0) {
+            recycle_obstacle(&(Game_Obstacles[i]));
           }
         }
 
@@ -386,14 +410,14 @@ void draw_dino(struct Dino my_dino) {
     y_loc = my_dino.y_loc_cur;
   }
 
-  for (int i = 0; i < my_dino.height; i++) {
+  for (int i = 0; i < my_dino.height + 1; i++) {
     draw_line(x_loc, y_loc + i, x_loc + my_dino.width, y_loc + i,
               my_dino.colour);
   }
 }
 
 void draw_ground(short int color) {
-  int height = Y_MAX - GROUND_HEIGHT;
+  int height = Y_MAX - GROUND_HEIGHT + 1;
   for (int i = 0; i < GROUND_HEIGHT; i++) {
     draw_line(0, height + i, X_MAX, height + i, color);
   }
@@ -589,4 +613,45 @@ void create_pterodactyl(struct Obstacle* pterodactyl) {
   struct Obstacle temp = {false, false, false, false, 30,   30,
                           0,     0,     X_MAX, 90,    BLACK};
   *pterodactyl = temp;
+}
+
+// Re-initializes all parameters to recycle input obstacle for endless queue
+void recycle_obstacle(struct Obstacle* obs) {
+  obs->collision = false;
+  obs->erase = false;
+  obs->go = false;
+
+  int randNum = rand() % 4;
+
+  if (randNum == 0 || randNum == 1) {
+    // 50% chance cactus
+    obs->cactus_obs_type = true;
+    obs->height = 50;
+    obs->width = 20;
+    obs->x_loc_prev = 0;
+    obs->y_loc_prev = 0;
+    obs->x_loc_cur = X_MAX;
+    obs->y_loc_cur = Y_WORLD - 50;
+    obs->colour = BLACK;
+  } else if (randNum == 2) {
+    // 25% high pterodactyl
+    obs->cactus_obs_type = false;
+    obs->height = 30;
+    obs->width = 30;
+    obs->x_loc_prev = 0;
+    obs->y_loc_prev = 0;
+    obs->x_loc_cur = X_MAX;
+    obs->y_loc_cur = 90;
+    obs->colour = BLACK;
+  } else if (randNum == 3) {
+    // 25% low pterodactyl
+    obs->cactus_obs_type = false;
+    obs->height = 30;
+    obs->width = 30;
+    obs->x_loc_prev = 0;
+    obs->y_loc_prev = 0;
+    obs->x_loc_cur = X_MAX;
+    obs->y_loc_cur = Y_WORLD - 95;
+    obs->colour = BLACK;
+  }
 }
