@@ -94869,34 +94869,11 @@ int main(void) {
           Game_Obstacles[i].erase = true;
           draw_obstacle(Game_Obstacles[i], ptero_animation);
 
-          /*trex.erase = true;
-          draw_dino(trex);
-          draw_clouds(true, cloud_mov_prev);*/
-          // THINKING THESE SHOULD BE OUTSIDE FOR LOOP
-
           /* Update Previous */
           Game_Obstacles[i].x_loc_prev = Game_Obstacles[i].x_loc_cur;
           Game_Obstacles[i].y_loc_prev = Game_Obstacles[i].y_loc_cur;
 
-          trex.x_loc_prev = trex.x_loc_cur;
-          trex.y_loc_prev = trex.y_loc_cur;
-          for (int i = 0; i < 4; i++) {
-            cloud_mov_prev[i] = cloud_mov_cur[i];
-          }
-          // THINKING THESE SHOULD BE OUTSIDE FOR LOOP
-
           /* Update Current */
-
-          // For cloud movement
-          /*for (int i = 0; i < 4; i++) {
-            if (cloud_mov_cur[i] == X_MAX) {
-              cloud_mov_cur[i] = 0;
-            } else {
-              cloud_mov_cur[i]++;
-            }
-          }*/
-          // THINKING THESE SHOULD BE OUTSIDE FOR LOOP
-
           // For obstacles
           if (Game_Obstacles[i].collision == true) {
             // If a cactus collides, then send it to the ground
@@ -94935,11 +94912,6 @@ int main(void) {
           /* Draw */
           Game_Obstacles[i].erase = false;
           draw_obstacle(Game_Obstacles[i], ptero_animation);
-
-          /*draw_clouds(false, cloud_mov_cur);
-          trex.erase = false;
-          draw_dino(trex);*/
-          // THINKING THESE SHOULD BE OUTSIDE FOR LOOP
         }
 
         // ========== DRAW DINO AND CLOUDS ==========
@@ -95167,9 +95139,9 @@ void draw_dino(struct Dino my_dino) {
 }
 
 void draw_ground(short int color) {
-  int height = Y_MAX - GROUND_HEIGHT /* + 1*/;
-  for (int i = 0; i < GROUND_HEIGHT; i++) {
-    draw_line(0, height + i, X_MAX + 1, height + i, color);
+  int height = Y_MAX - GROUND_HEIGHT;
+  for (int i = 0; i < GROUND_HEIGHT + 1; i++) {
+    draw_line(0, height + i, X_MAX, height + i, color);
   }
 }
 
