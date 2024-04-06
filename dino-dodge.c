@@ -109103,8 +109103,8 @@ int main(void) {
 
       bool ptero_animation = true;
       int refresh_count = 0;
-      int cloud_mov_prev[] = {0, 0, 0, 0};
-      int cloud_mov_cur[] = {0, 0, 0, 0};
+      int cloud_mov_prev[] = {0, -180, -80, -270};
+      int cloud_mov_cur[] = {0, -180, -80, -270};
 
       int rotIdx = -1;
       int prevIdx = 0;
@@ -109128,9 +109128,6 @@ int main(void) {
 
         for (int i = 0; i < MAX_OBS; i++) {
           /* Collision Detection */
-          // ***ATTENTION NOTE: (trex.x_loc_cur + trex.width) needs to be (mod
-          // obstacle_speed - 1) or else collision will be 1 pixel into the trex
-
           // Check for collisions (cactus, pterodactyl)
           if (Game_Obstacles[i].cactus_obs_type) {
             check_cactus_collision(&(Game_Obstacles[i]), &trex, &num_lives);
@@ -109232,6 +109229,11 @@ int main(void) {
             cloud_mov_cur[i] = 0;
           } else {
             cloud_mov_cur[i]++;
+          }
+        }
+        if (cloud_mov_cur[3] == X_MAX + 40 || cloud_mov_cur[3] < 100) {
+          for (int i = 0; i < 10; i++) {
+            draw_line(i, 0, i, 100, BACKGROUND_COL);
           }
         }
 
@@ -109729,9 +109731,9 @@ void recycle_obstacle(struct Obstacle* obs) {
 void draw_clouds(bool erase, int x_mov[]) {
   int cloud_width = 40;
   int cloud_height = 20;
-  int cloud_x_loc[] = {-x_mov[0], 180 - x_mov[1], 80 - x_mov[2],
-                       270 - x_mov[3]};
-  int cloud_y_loc[] = {30, 30, 60, 60};
+  int cloud_x_loc[] = {X_MAX - x_mov[0], X_MAX - x_mov[1], X_MAX - x_mov[2],
+                       X_MAX - x_mov[3]};
+  int cloud_y_loc[] = {30, 20, 60, 50};
 
   if (erase == true) {
     for (int i = cloud_width + 10; i >= 0; i--) {
@@ -109745,10 +109747,6 @@ void draw_clouds(bool erase, int x_mov[]) {
       drawObj(cloud_x_loc[c], cloud_y_loc[c], clouds, cloud_width,
               cloud_height);
     }
-    /*drawObj(20, 10, clouds, cloud_width, cloud_height);
-    drawObj(200, 30, clouds, cloud_width, cloud_height);
-    drawObj(100, 60, clouds, cloud_width, cloud_height);
-    drawObj(290, 20, clouds, cloud_width, cloud_height);*/
   }
 }
 
