@@ -94726,11 +94726,9 @@ void clear_screen();
 void draw_dino(struct Dino my_dino);
 void draw_single_cactus(int x0, int y0, short int color);
 void draw_obstacle(struct Obstacle obs, bool ptero_animation);
-// OLD void draw_obstacle(struct Obstacle obs);
 void draw_ground(short int color);
 void drawObj(int startX, int startY, const short int my_arr[], int width,
              int height);  // NEW
-
 void draw_clouds(bool erase, int x_mov[]);
 
 // De1-Soc Hardware Prototypes
@@ -94743,6 +94741,7 @@ void read_ps2_keyboard(unsigned char* pressed_key);
 // Game Functionality Prototypes
 void update_timer(int* timer);
 void update_airborne_dino_params(struct Dino* trex);
+void update_low_dino_params(struct Dino* trex, int* prevTime, int* currTime);
 void check_cactus_collision(struct Obstacle* cactus, struct Dino* trex,
                             int* lives);
 void check_pterodactyl_collision(struct Obstacle* pterodactyl,
@@ -94821,6 +94820,7 @@ int main(void) {
 
       int rotIdx = -1;
       int prevIdx = 0;
+      int prevTime = 0;
 
       while (1) {
         refresh_count++;
@@ -94915,11 +94915,13 @@ int main(void) {
         }
 
         // ========== DRAW DINO AND CLOUDS ==========
-
-        if (trex.airborne == false) {
+        if ((trex.airborne == false) && (trex.low == false)) {
           read_ps2_keyboard(&pressed_key);
           if (pressed_key == KEY_SPACE) {
             trex.airborne = true;
+          } else if (pressed_key == KEY_L_ALT) {
+            trex.low = true;
+            prevTime = timer;
           }
         }
 
@@ -94948,6 +94950,9 @@ int main(void) {
         // For trex (update only if trex is airborne / in flight)
         if (trex.airborne == true) {
           update_airborne_dino_params(&trex);
+        } else if (trex.low == true) {
+            // prevTime = timer;
+            update_low_dino_params(&trex, &prevTime, &timer);
         }
 
         /* Draw */
@@ -95134,7 +95139,16 @@ void draw_dino(struct Dino my_dino) {
                 BACKGROUND_COL);
     }
   } else {
-    drawObj(x_loc, y_loc, my_dinosaur, my_dino.width, my_dino.height);
+
+    // TESTING PHASE
+    if (my_dino.low) {
+        for (int i = 0; i < my_dino.height + 1; i++) {
+            draw_line(x_loc, y_loc + i, x_loc + my_dino.width, y_loc + i, BLACK);
+        }
+
+    } else {
+        drawObj(x_loc, y_loc, my_dinosaur, my_dino.width, my_dino.height);
+    }
   }
 }
 
@@ -95281,6 +95295,24 @@ void update_airborne_dino_params(struct Dino* trex) {
     trex->airborne = false;
     trex->rising = true;
   }
+}
+
+// Updates dino low parameters: y_loc_cur, low
+// Low flag set to false after elapsed time threshold (3 seconds)
+=void update_low_dino_params(struct Dino* trex, int* prevTime, int* currTime) {
+    // If enough time has passed, then set low flag to false
+    if (*currTime - *prevTime >= 3) {
+        trex->low = false;
+    }
+
+    // Update y_loc_cur
+    if (trex->low == true) {
+        trex->y_loc_cur = Y_WORLD - 50;
+        trex->height = 50;
+    } else if (trex->low == false) {
+        trex->y_loc_cur = Y_WORLD - 80;
+        trex->height = 80;
+    }
 }
 
 // Input Obstacle struct, Dino struct, num_lives int by pointer
