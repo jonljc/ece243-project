@@ -95129,7 +95129,7 @@ void draw_dino(struct Dino my_dino) {
   }
 
   if (my_dino.erase == true) {
-    for (int i = 0; i < my_dino.height + 4; i++) {
+    for (int i = 0; i < my_dino.height; i++) {
       draw_line(x_loc, y_loc + i, x_loc + my_dino.width, y_loc + i,
                 BACKGROUND_COL);
     }
