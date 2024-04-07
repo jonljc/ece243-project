@@ -219151,6 +219151,8 @@ const short int note_4[] = {
 
 };
 
+// Audio retrieved from: https://mixkit.co/free-sound-effects/game/
+// Audio processed by: https://j0e.ca/sound2c/
 const int sound_tap[2333] = {-1966272,
                              -353736700,
                              -713955602,
@@ -221485,6 +221487,8 @@ const int sound_tap[2333] = {-1966272,
                              0,
                              0};
 
+// Audio retrieved from: https://mixkit.co/free-sound-effects/game/
+// Audio processed by: https://j0e.ca/sound2c/
 const int sound_lose[24033] = {
     379381,      425729,      460011,      497758,      508151,
     388459,      423340,      563338,      511018,      399569,
@@ -226294,6 +226298,8 @@ const int sound_lose[24033] = {
     -18276,      86961,       -26877,      -95084,      -34104,
     -24309,      47602,       -68984};
 
+// Audio retrieved from: https://mixkit.co/free-sound-effects/game/
+// Audio processed by: https://j0e.ca/sound2c/
 const int sound_start[15167] = {0,
                                 0,
                                 0,
