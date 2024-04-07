@@ -241693,7 +241693,7 @@ int main(void) {
       game_state = 2;
     }
 
-    // GAME STATE #2: LIVE GAME
+    // GAME STATE #2: INSTRUCTIONS
     else if (game_state == 2) {
       update_darkmode();
 
